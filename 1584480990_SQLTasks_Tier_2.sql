@@ -97,42 +97,38 @@ the guest user's ID is always 0. Include in your output the name of the
 facility, the name of the member formatted as a single column, and the cost.
 Order by descending cost, and do not use any subqueries. */
 
-SELECT b.bookid, CONCAT(m.firstname, ' ', m.surname, ' has booked ', f.name) AS booking_detail, 
-b.slots * (CASE WHEN b.memid=0 THEN f.guestcost*2
-                WHEN b.memid!=0 THEN f.membercost*2
-                ELSE 0 END) AS cost
+SELECT b.bookid, CONCAT( m.firstname, ' ', m.surname, ' has booked ', f.name ) AS booking_detail, 
+	(CASE WHEN b.memid=0 AND (b.slots * f.guestcost *2)>30 THEN b.slots * f.guestcost *2
+	      WHEN b.memid!=0 AND (b.slots * f.membercost *2)>30 THEN b.slots * f.membercost *2 END) AS cost
 FROM Facilities AS f
-LEFT JOIN Bookings AS b 
-ON f.facid = b.facid
-LEFT JOIN Members AS m 
-ON b.memid = m.memid
-WHERE b.starttime LIKE '2012-09-14%' AND (b.slots*f.guestcost*2)>30 OR (b.slots*f.membercost*2)>30
-ORDER BY cost DESC;
+LEFT JOIN Bookings AS b ON f.facid = b.facid
+LEFT JOIN Members AS m ON b.memid = m.memid
+WHERE b.starttime LIKE '2012-09-14%'
+HAVING cost IS NOT NULL
+ORDER BY cost
 
 
 /* Q9: This time, produce the same result as in Q8, but using a subquery. */
 
-
-select guest.booking, guest.booking_detail, guest.cost
-from (select b.bookid as booking, CONCAT(m.firstname, ' ', m.surname, ' has booked ', f.name) AS booking_detail, 2*f.guestcost*b.slots as cost, f.name as facility
+select booking, booking_detail, cost
+from (select b.bookid as booking, CONCAT(m.firstname, ' ', m.surname, ' has booked ', f.name) AS booking_detail, 2*f.guestcost*b.slots as cost
       from Facilities as f
       left join Bookings as b
       on f.facid=b.facid
       left join Members as m
       on b.memid=m.memid
-      where b.memid=0 and 2*f.guestcost*b.slots>30 and b.starttime LIKE '2012-19-14%'
-      group by facility) as guest
+      where b.memid=0 and b.starttime LIKE '2012-09-14%') as guest
 union all
 select member.booking, member.booking_detail, member.cost
-from (select b.bookid as booking, CONCAT(m.firstname, ' ', m.surname, ' has booked ', f.name) AS booking_detail, 2*f.membercost*b.slots as cost, f.name as facility
+from (select b.bookid as booking, CONCAT(m.firstname, ' ', m.surname, ' has booked ', f.name) AS booking_detail, 2*f.membercost*b.slots as cost
       from Facilities as f
       left join Bookings as b
       on f.facid=b.facid
       left join Members as m
       on b.memid=m.memid
-      where b.memid!=0 and 2*f.membercost*b.slots>30 and b.starttime LIKE '2012-19-14%'
-      group by facility) as member
-order by cost
+      where b.memid!=0 and b.starttime LIKE '2012-09-14%') as member
+having cost>30
+order by cost desc
 
 /* PART 2: SQLite
 
